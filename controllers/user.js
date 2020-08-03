@@ -2,24 +2,18 @@ const bcrypt = require("bcryptjs");
 const mysql = require("mysql");
 const { HOST, USER, PASSWORD, DATABASE } = require("../config");
 
-function verifynumdocrepeat(num_doc) {
-  console.log(num_doc);
-  const sql = `SELECT COUNT(name) FROM users WHERE num_doc=${num_doc}`;
-}
-
 function signUp(req, res) {
   const userObj = {
-    type_doc: req.body.type_doc,
-    num_doc: req.body.num_doc,
-    name: req.body.name,
+    type_doc: req.body.typedoc,
+    num_doc: req.body.ndoc,
+    name: req.body.names,
     lastname: req.body.lastname,
-    email: req.body.email,
+    email: req.body.email.toLowerCase(),
     tel: req.body.tel,
     role: "user",
     active: 1,
     password: req.body.password,
   };
-  const { password } = req.body;
   const connection = mysql.createConnection({
     host: HOST,
     user: USER,
@@ -54,12 +48,12 @@ function signUp(req, res) {
             message: "Este correo electrónico ya está registrado",
           });
         } else {
-          if (!userObj.password || !req.body.repeatPassword) {
+          if (!userObj.password || !req.body.passwordRepeat) {
             res
               .status(404)
               .send({ message: "Las contraseñas son obligatorias." });
           } else {
-            if (userObj.password !== req.body.repeatPassword) {
+            if (userObj.password !== req.body.passwordRepeat) {
               res
                 .status(404)
                 .send({ message: "Las contraseñas no son iguales" });
