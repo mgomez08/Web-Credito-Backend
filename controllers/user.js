@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const jwt = require("../services/jwt");
 const mysql = require("mysql");
 const { HOST, USER, PASSWORD, DATABASE } = require("../config");
 
@@ -75,6 +76,7 @@ function signUp(req, res) {
                       });
                     } else {
                       res.status(200).send({ user: userObj });
+                      connection.end();
                     }
                   });
                 }
@@ -87,6 +89,78 @@ function signUp(req, res) {
   });
 }
 
+function signIn(req, res) {
+  const params = req.body;
+  const email = params.email.toLowerCase();
+  const password = params.password;
+  if (!email || !password) {
+    res.status(404).send({
+      message: "Debe ingresar una correo electrónico y una contraseña.",
+    });
+  } else {
+    const email = params.email.toLowerCase();
+    const password = params.password;
+    const connection = mysql.createConnection({
+      host: HOST,
+      user: USER,
+      password: PASSWORD,
+      database: DATABASE,
+      typeCast: function castField(field, useDefaultTypeCasting) {
+        if (field.type === "BIT" && field.length === 1) {
+          var bytes = field.buffer();
+          return bytes[0] === 1;
+        }
+        return useDefaultTypeCasting();
+      },
+    });
+    connection.connect((err) => {
+      if (err) {
+        throw err;
+      }
+    });
+
+    const sql = `SELECT * FROM users WHERE email="${email}"`;
+    connection.query(sql, (err, userStored) => {
+      if (err) {
+        res.status(500).send({
+          message: "Ocurrió un error en el servidor, inténtelo más tarde. #5",
+        });
+      } else {
+        if (!userStored) {
+          res.status(500).send({
+            message: "Usuario no encontrado.",
+          });
+        } else {
+          bcrypt.compare(password, userStored[0].password, (err, check) => {
+            if (err) {
+              res.status(500).send({
+                message:
+                  "Ocurrió un error en el servidor, inténtelo más tarde. #6",
+              });
+            } else if (!check) {
+              res.status(404).send({
+                message:
+                  "El correo electrónico o la contraseña son incorrectos",
+              });
+            } else if (!userStored[0].active) {
+              res.status(200).send({
+                message:
+                  "El usuario está desactivado, comunicate con atención al cliente.",
+              });
+            } else {
+              res.status(200).send({
+                accessToken: jwt.createAccessToken(userStored[0]),
+                refreshToken: jwt.createRefreshToken(userStored[0]),
+              });
+              connection.end();
+            }
+          });
+        }
+      }
+    });
+  }
+}
 module.exports = {
   signUp,
+  signIn,
 };
