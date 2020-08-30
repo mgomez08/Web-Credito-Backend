@@ -76,7 +76,6 @@ function signUp(req, res) {
                       });
                     } else {
                       res.status(200).send({ user: userObj });
-                      connection.end();
                     }
                   });
                 }
@@ -86,6 +85,7 @@ function signUp(req, res) {
         }
       });
     }
+    connection.end();
   });
 }
 
@@ -126,11 +126,13 @@ function signIn(req, res) {
           message: "Ocurrió un error en el servidor, inténtelo más tarde. #5",
         });
       } else {
-        if (!userStored) {
-          res.status(500).send({
+        if (!userStored[0]) {
+          res.status(404).send({
             message: "Usuario no encontrado.",
           });
         } else {
+          console.log(password);
+          console.log(userStored);
           bcrypt.compare(password, userStored[0].password, (err, check) => {
             if (err) {
               res.status(500).send({
@@ -152,12 +154,12 @@ function signIn(req, res) {
                 accessToken: jwt.createAccessToken(userStored[0]),
                 refreshToken: jwt.createRefreshToken(userStored[0]),
               });
-              connection.end();
             }
           });
         }
       }
     });
+    connection.end();
   }
 }
 module.exports = {
