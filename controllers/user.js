@@ -213,6 +213,7 @@ function savePersonalInfo(req, res) {
     num_doc: req.body.ndoc,
     tel: req.body.tel,
     age: req.body.age,
+    marital_status: req.body.maritalstatus,
     edu_level: req.body.educationallevel,
     profession: req.body.profession,
     occupation: req.body.occupation,
@@ -268,7 +269,7 @@ function getPersonalInfo(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT name AS names, lastname, date_birth AS datebirth, depart_birth AS departbirth, city_birth AS citybirth,	type_doc AS typedoc, num_doc AS ndoc, tel, age, edu_level AS educationallevel, profession, occupation, num_per_family_ncl AS numpersonsfamilynucleus, num_per_depen AS numpersonsdependents, type_housing AS typehousing, depart_resi AS departresidence, 	city_resi AS cityresidence, home_address AS homeaddress, years_resi AS yearsresidence FROM users WHERE id="${req.user.id}"`;
+  const sql = `SELECT name AS names, lastname, date_birth AS datebirth, depart_birth AS departbirth, city_birth AS citybirth,	type_doc AS typedoc, num_doc AS ndoc, tel, age, marital_status AS maritalstatus, edu_level AS educationallevel, profession, occupation, num_per_family_ncl AS numpersonsfamilynucleus, num_per_depen AS numpersonsdependents, type_housing AS typehousing, depart_resi AS departresidence, 	city_resi AS cityresidence, home_address AS homeaddress, years_resi AS yearsresidence FROM users WHERE id="${req.user.id}"`;
   connection.query(sql, (err, userStored) => {
     if (err) {
       connection.end();
@@ -298,8 +299,16 @@ function saveFinancialInfo(req, res) {
     work_position: req.body.workposition,
     type_salary: req.body.typesalary,
     type_contract: req.body.typecontract,
+    total_assets: req.body.totalassets,
     monthly_salary: req.body.monthlysalary,
+    additional_income: req.body.additionalincome,
+    total_monthly_income: req.body.totalmonthlyincome,
     monthly_expenditure: req.body.monthlyexpenditure,
+    have_credits: req.body.havecredits,
+    amount_credit_acquired: req.body.amountcreditacquired,
+    bank_entity: req.body.bankentity,
+    have_savings_account: req.body.havesavingsaccount,
+    bank_entity_accounts: req.body.bankentityaccounts,
   };
   const connection = mysql.createConnection({
     host: HOST,
@@ -345,7 +354,7 @@ function getFinancialInfo(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, monthly_salary AS monthlysalary, monthly_expenditure AS  monthlyexpenditure FROM financial_info WHERE id_user="${req.user.id}"`;
+  const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, bank_entity AS bankentity, have_savings_account AS havesavingsaccount,bank_entity_accounts AS bankentityaccounts FROM financial_info WHERE id_user="${req.user.id}"`;
   connection.query(sql, (err, userStored) => {
     if (err) {
       connection.end();
@@ -386,7 +395,7 @@ function getColumnsNulls(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT((SELECT SUM((date_birth ='0000-00-00') + (depart_birth = '') + (city_birth = '') + (age IS NULL) + (edu_level = '') + (profession = '') + (occupation = '') +(num_per_family_ncl IS NULL)  + (num_per_depen IS NULL)  + (type_housing = '') + (depart_resi = '') + (city_resi = '') + (home_address = '') + (years_resi IS NULL)) from users WHERE id='${req.user.id}')+(SELECT IFNULL(SUM((years_experience IS NULL) + (date_current_job ='0000-00-00') +  + (work_position = '') + (type_salary = "") + (type_contract = '') + (monthly_salary IS NULL) + (monthly_expenditure IS NULL)),7) from financial_info WHERE id_user='${req.user.id}')) AS value`;
+  const sql = `SELECT((SELECT SUM((date_birth ='0000-00-00') + (depart_birth = '') + (city_birth = '') + (age IS NULL) + (marital_status = '') + (edu_level = '') + (profession = '') + (occupation = '') +(num_per_family_ncl IS NULL)  + (num_per_depen IS NULL)  + (type_housing = '') + (depart_resi = '') + (city_resi = '') + (home_address = '') + (years_resi IS NULL)) from users WHERE id='${req.user.id}')+(SELECT IFNULL(SUM((years_experience IS NULL) + (date_current_job ='0000-00-00') +  + (work_position = '') + (type_salary = "") + (type_contract = '') + (total_assets IS NULL) + (monthly_salary IS NULL) + (additional_income IS NULL) + (total_monthly_income IS NULL) +  (monthly_expenditure IS NULL) +   (have_credits IS NULL) +  (amount_credit_acquired IS NULL) +  (bank_entity IS NULL) + (have_savings_account IS NULL) + (bank_entity_accounts IS NULL)),7) from financial_info WHERE id_user='${req.user.id}')) AS value`;
   connection.query(sql, (err, columnsNulls) => {
     if (err) {
       connection.end();
