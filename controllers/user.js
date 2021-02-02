@@ -184,7 +184,7 @@ function signIn(req, res) {
               });
             } else if (!userStored[0].active) {
               connection.end();
-              res.status(200).send({
+              res.status(404).send({
                 message:
                   "El usuario está desactivado, comunicate con atención al cliente.",
               });
@@ -282,6 +282,20 @@ function getPersonalInfo(req, res) {
         message: "No se encontró el usuario.",
       });
     } else {
+      const yearsDate = moment().diff(userStored[0].datebirth, "years", false);
+      if(yearsDate !== userStored[0].age){
+        const sql = `UPDATE users SET age = ${yearsDate} WHERE type_doc="${userStored[0].typedoc}" AND num_doc=${userStored[0].ndoc}`;
+        connection.query(sql, (err) => {
+          if (err) {
+            connection.end();
+            res.status(500).send({
+              message: "Ocurrió un error en el servidor, inténtelo más tarde.",
+            });
+          }else{
+            userStored[0].age = yearsDate;
+          }
+        })
+      }
       if (userStored[0].datebirth === "0000-00-00") {
         userStored[0].datebirth = null;
       }
