@@ -31,5 +31,15 @@ api.get(
   [md_auth.ensureAuth],
   UserController.getColumnsNulls
 );
+api.post(
+  "/save-form-progress",
+  [md_auth.ensureAuth],
+  UserController.saveFormProgress,
+);
+api.get(
+  "/get-form-progress",
+  [md_auth.ensureAuth],
+  UserController.getFormProgress,
+);
 
 module.exports = api;

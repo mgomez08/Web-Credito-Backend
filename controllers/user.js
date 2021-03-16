@@ -203,6 +203,7 @@ function signIn(req, res) {
 }
 
 function savePersonalInfo(req, res) {
+  
   const userObj = {
     name: req.body.names,
     lastname: req.body.lastname,
@@ -281,7 +282,7 @@ function getPersonalInfo(req, res) {
       res.status(404).send({
         message: "No se encontró el usuario.",
       });
-    } else {
+    } else if(userStored[0].datebirth !== '0000-00-00'){
       const yearsDate = moment().diff(userStored[0].datebirth, "years", false);
       if(yearsDate !== userStored[0].age){
         const sql = `UPDATE users SET age = ${yearsDate} WHERE type_doc="${userStored[0].typedoc}" AND num_doc=${userStored[0].ndoc}`;
@@ -296,17 +297,16 @@ function getPersonalInfo(req, res) {
           }
         })
       }
-      if (userStored[0].datebirth === "0000-00-00") {
-        userStored[0].datebirth = null;
-      }
-      connection.end();
-      res.status(200).send({ userStored });
     }
+    if (userStored[0].datebirth === "0000-00-00") {
+      userStored[0].datebirth = null;
+    }
+    connection.end();
+    res.status(200).send({ userStored });
   });
 }
 
 function saveFinancialInfo(req, res) {
-  console.log(req.body);
   const userObj = {
     years_experience: req.body.yearsexperience,
     date_current_job: moment(req.body.datecurrentjob).format("YYYY-MM-DD"),
@@ -380,13 +380,27 @@ function getFinancialInfo(req, res) {
       res.status(404).send({
         message: "No se encontró el usuario.",
       });
-    } else {
-      if (userStored[0].datecurrentjob === "0000-00-00") {
-        userStored[0].datecurrentjob = null;
-      }
-      connection.end();
-      res.status(200).send({ userStored });
-    }
+    } else if (userStored[0].datecurrentjob !== "0000-00-00") {
+        const yearsDate = moment().diff(userStored[0].datecurrentjob, "years", false);
+        if(yearsDate !== userStored[0].yearsexperience){
+          const sql = `UPDATE financial_info SET years_experience = ${yearsDate} WHERE id_user="${req.user.id}"`;
+          connection.query(sql, (err) => {
+            if (err) {
+              connection.end();
+              res.status(500).send({
+                message: "Ocurrió un error en el servidor, inténtelo más tarde.",
+              });
+            }else{
+              userStored[0].yearsexperience = yearsDate;
+            }
+           })
+          }
+        }
+        if(userStored[0].datecurrentjob === "0000-00-00"){
+          userStored[0].datecurrentjob = null;
+        }
+        connection.end();
+        res.status(200).send({ userStored });
   });
 }
 
@@ -427,6 +441,62 @@ function getColumnsNulls(req, res) {
     }
   });
 }
+function saveFormProgress(req, res) {
+  const progress = req.body.progress;
+  const connection = mysql.createConnection({
+    host: HOST,
+    user: USER,
+    password: PASSWORD,
+    database: DATABASE,
+  });
+  connection.connect((err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  const sql = `UPDATE users SET form_progress=${progress} WHERE id=${req.user.id}`
+  connection.query(sql, (err) => {
+    if(err){
+      connection.end();
+      res.status(500).send({
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #12"
+      })
+    }else{
+      connection.end();
+      res.status(200).send({message: 'Ok'});
+    }
+  })
+}
+function getFormProgress(req, res) {
+  const connection = mysql.createConnection({
+    host: HOST,
+    user: USER,
+    password: PASSWORD,
+    database: DATABASE,
+  });
+  connection.connect((err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  const sql = `SELECT form_progress FROM users WHERE id=${req.user.id}`
+  connection.query(sql, (err, progress) => {
+    if(err){
+      connection.end();
+      res.status(500).send({
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #13"
+      })
+    }else if(!progress[0]){
+      connection.end();
+      res.status(404).send({
+        message: "No se encontró el usuario.",
+      });
+    }else{
+      connection.end();
+      res.status(200).send({progress});
+    }
+  })
+}
 module.exports = {
   signUp,
   signIn,
@@ -435,4 +505,6 @@ module.exports = {
   saveFinancialInfo,
   getFinancialInfo,
   getColumnsNulls,
+  saveFormProgress,
+  getFormProgress,
 };
