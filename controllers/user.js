@@ -203,7 +203,6 @@ function signIn(req, res) {
 }
 
 function savePersonalInfo(req, res) {
-  
   const userObj = {
     name: req.body.names,
     lastname: req.body.lastname,
@@ -282,9 +281,9 @@ function getPersonalInfo(req, res) {
       res.status(404).send({
         message: "No se encontró el usuario.",
       });
-    } else if(userStored[0].datebirth !== '0000-00-00'){
+    } else if (userStored[0].datebirth !== "0000-00-00") {
       const yearsDate = moment().diff(userStored[0].datebirth, "years", false);
-      if(yearsDate !== userStored[0].age){
+      if (yearsDate !== userStored[0].age) {
         const sql = `UPDATE users SET age = ${yearsDate} WHERE type_doc="${userStored[0].typedoc}" AND num_doc=${userStored[0].ndoc}`;
         connection.query(sql, (err) => {
           if (err) {
@@ -292,10 +291,10 @@ function getPersonalInfo(req, res) {
             res.status(500).send({
               message: "Ocurrió un error en el servidor, inténtelo más tarde.",
             });
-          }else{
+          } else {
             userStored[0].age = yearsDate;
           }
-        })
+        });
       }
     }
     if (userStored[0].datebirth === "0000-00-00") {
@@ -303,6 +302,7 @@ function getPersonalInfo(req, res) {
     }
     connection.end();
     res.status(200).send({ userStored });
+    return userStored;
   });
 }
 
@@ -381,26 +381,30 @@ function getFinancialInfo(req, res) {
         message: "No se encontró el usuario.",
       });
     } else if (userStored[0].datecurrentjob !== "0000-00-00") {
-        const yearsDate = moment().diff(userStored[0].datecurrentjob, "years", false);
-        if(yearsDate !== userStored[0].yearsexperience){
-          const sql = `UPDATE financial_info SET years_experience = ${yearsDate} WHERE id_user="${req.user.id}"`;
-          connection.query(sql, (err) => {
-            if (err) {
-              connection.end();
-              res.status(500).send({
-                message: "Ocurrió un error en el servidor, inténtelo más tarde.",
-              });
-            }else{
-              userStored[0].yearsexperience = yearsDate;
-            }
-           })
+      const yearsDate = moment().diff(
+        userStored[0].datecurrentjob,
+        "years",
+        false
+      );
+      if (yearsDate !== userStored[0].yearsexperience) {
+        const sql = `UPDATE financial_info SET years_experience = ${yearsDate} WHERE id_user="${req.user.id}"`;
+        connection.query(sql, (err) => {
+          if (err) {
+            connection.end();
+            res.status(500).send({
+              message: "Ocurrió un error en el servidor, inténtelo más tarde.",
+            });
+          } else {
+            userStored[0].yearsexperience = yearsDate;
           }
-        }
-        if(userStored[0].datecurrentjob === "0000-00-00"){
-          userStored[0].datecurrentjob = null;
-        }
-        connection.end();
-        res.status(200).send({ userStored });
+        });
+      }
+    }
+    if (userStored[0].datecurrentjob === "0000-00-00") {
+      userStored[0].datecurrentjob = null;
+    }
+    connection.end();
+    res.status(200).send({ userStored });
   });
 }
 
@@ -454,18 +458,18 @@ function saveFormProgress(req, res) {
       throw err;
     }
   });
-  const sql = `UPDATE users SET form_progress=${progress} WHERE id=${req.user.id}`
+  const sql = `UPDATE users SET form_progress=${progress} WHERE id=${req.user.id}`;
   connection.query(sql, (err) => {
-    if(err){
+    if (err) {
       connection.end();
       res.status(500).send({
-        message: "Ocurrió un error en el servidor, inténtelo más tarde. #12"
-      })
-    }else{
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #12",
+      });
+    } else {
       connection.end();
-      res.status(200).send({message: 'Ok'});
+      res.status(200).send({ message: "Ok" });
     }
-  })
+  });
 }
 function getFormProgress(req, res) {
   const connection = mysql.createConnection({
@@ -479,23 +483,82 @@ function getFormProgress(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT form_progress FROM users WHERE id=${req.user.id}`
-  connection.query(sql, (err, progress) => {
-    if(err){
+  const sql = `SELECT form_progress FROM users WHERE id=${req.user.id}`;
+  connection.query(sql, (err, resultProgress) => {
+    if (err) {
       connection.end();
       res.status(500).send({
-        message: "Ocurrió un error en el servidor, inténtelo más tarde. #13"
-      })
-    }else if(!progress[0]){
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #13",
+      });
+    } else if (!resultProgress[0]) {
       connection.end();
       res.status(404).send({
         message: "No se encontró el usuario.",
       });
-    }else{
+    } else {
       connection.end();
-      res.status(200).send({progress});
+      res.status(200).send({ progress: resultProgress[0].form_progress });
     }
-  })
+  });
+}
+function calculatedScoring(req, res) {
+  const connection = mysql.createConnection({
+    host: HOST,
+    user: USER,
+    password: PASSWORD,
+    database: DATABASE,
+    typeCast: function castField(field, useDefaultTypeCasting) {
+      if (field.type === "BIT" && field.length === 1) {
+        var bytes = field.buffer();
+        return bytes[0] === 1;
+      }
+      return useDefaultTypeCasting();
+    },
+  });
+  connection.connect((err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  const sql = `SELECT name AS names, lastname, date_birth AS datebirth, depart_birth AS departbirth, city_birth AS citybirth,	type_doc AS typedoc, num_doc AS ndoc, tel, age, marital_status AS maritalstatus, edu_level AS educationallevel, profession, occupation, num_per_family_ncl AS numpersonsfamilynucleus, num_per_depen AS numpersonsdependents, type_housing AS typehousing, depart_resi AS departresidence, 	city_resi AS cityresidence, home_address AS homeaddress, years_resi AS yearsresidence FROM users WHERE id="${req.user.id}"`;
+  connection.query(sql, (err, personalData) => {
+    if (err) {
+      connection.end();
+      res.status(500).send({
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #8",
+      });
+    } else if (!personalData[0]) {
+      connection.end();
+      res.status(404).send({
+        message: "No se encontró el usuario.",
+      });
+    } else {
+      const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, bank_entity AS bankentity, have_savings_account AS havesavingsaccount,bank_entity_accounts AS bankentityaccounts FROM financial_info WHERE id_user="${req.user.id}"`;
+      connection.query(sql, (err, financialData) => {
+        if (err) {
+          connection.end();
+          res.status(500).send({
+            message:
+              "Ocurrió un error en el servidor, inténtelo más tarde. #10",
+          });
+        } else if (!financialData[0]) {
+          connection.end();
+          res.status(404).send({
+            message: "No se encontró el usuario.",
+          });
+        } else {
+          connection.end();
+          personalData = personalData[0];
+          financialData = financialData[0];
+          console.log(personalData);
+          console.log(financialData);
+          res.status(200).send({
+            message: "Su scoring es de 84.3",
+          });
+        }
+      });
+    }
+  });
 }
 module.exports = {
   signUp,
@@ -507,4 +570,5 @@ module.exports = {
   getColumnsNulls,
   saveFormProgress,
   getFormProgress,
+  calculatedScoring,
 };

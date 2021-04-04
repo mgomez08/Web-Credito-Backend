@@ -34,12 +34,17 @@ api.get(
 api.post(
   "/save-form-progress",
   [md_auth.ensureAuth],
-  UserController.saveFormProgress,
+  UserController.saveFormProgress
 );
 api.get(
   "/get-form-progress",
   [md_auth.ensureAuth],
-  UserController.getFormProgress,
+  UserController.getFormProgress
+);
+api.get(
+  "/calculate-scoring",
+  [md_auth.ensureAuth],
+  UserController.calculatedScoring
 );
 
 module.exports = api;
