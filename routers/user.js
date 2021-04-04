@@ -46,5 +46,6 @@ api.get(
   [md_auth.ensureAuth],
   UserController.calculatedScoring
 );
+api.get("/get-scoring", [md_auth.ensureAuth], UserController.getScoring);
 
 module.exports = api;

@@ -547,16 +547,50 @@ function calculatedScoring(req, res) {
             message: "No se encontró el usuario.",
           });
         } else {
-          connection.end();
           personalData = personalData[0];
           financialData = financialData[0];
-          console.log(personalData);
-          console.log(financialData);
-          res.status(200).send({
-            message: "Su scoring es de 84.3",
+          const scoring = personalData.age * financialData.yearsexperience;
+
+          const sql = `UPDATE users SET scoring = ${scoring} WHERE id="${req.user.id}"`;
+          connection.query(sql, (err) => {
+            if (err) {
+              connection.end();
+              res.status(500).send({
+                message:
+                  "Ocurrió un error en el servidor, inténtelo más tarde.",
+              });
+            } else {
+              connection.end();
+              res.status(200).send({ scoring });
+            }
           });
         }
       });
+    }
+  });
+}
+function getScoring(req, res) {
+  const connection = mysql.createConnection({
+    host: HOST,
+    user: USER,
+    password: PASSWORD,
+    database: DATABASE,
+  });
+  connection.connect((err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  const sql = `SELECT scoring from users WHERE id=${req.user.id}`;
+  connection.query(sql, (err, resultScoring) => {
+    if (err) {
+      connection.end();
+      res.status(500).send({
+        message: "Ocurrió un error en el servidor, inténtelo más tarde.",
+      });
+    } else {
+      connection.end();
+      res.status(200).send({ scoring: resultScoring[0].scoring });
     }
   });
 }
@@ -571,4 +605,5 @@ module.exports = {
   saveFormProgress,
   getFormProgress,
   calculatedScoring,
+  getScoring,
 };
