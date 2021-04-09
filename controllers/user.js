@@ -318,11 +318,6 @@ function saveFinancialInfo(req, res) {
     additional_income: req.body.additionalincome,
     total_monthly_income: req.body.totalmonthlyincome,
     monthly_expenditure: req.body.monthlyexpenditure,
-    have_credits: req.body.havecredits,
-    amount_credit_acquired: req.body.amountcreditacquired,
-    bank_entity: req.body.bankentity,
-    have_savings_account: req.body.havesavingsaccount,
-    bank_entity_accounts: req.body.bankentityaccounts,
   };
   const connection = mysql.createConnection({
     host: HOST,
@@ -368,7 +363,7 @@ function getFinancialInfo(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, bank_entity AS bankentity, have_savings_account AS havesavingsaccount,bank_entity_accounts AS bankentityaccounts FROM financial_info WHERE id_user="${req.user.id}"`;
+  const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure FROM financial_info WHERE id_user="${req.user.id}"`;
   connection.query(sql, (err, userStored) => {
     if (err) {
       connection.end();
@@ -427,7 +422,7 @@ function getColumnsNulls(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT((SELECT SUM((date_birth ='0000-00-00') + (depart_birth = '') + (city_birth = '') + (age IS NULL) + (marital_status = '') + (edu_level = '') + (profession = '') + (occupation = '') +(num_per_family_ncl IS NULL)  + (num_per_depen IS NULL)  + (type_housing = '') + (depart_resi = '') + (city_resi = '') + (home_address = '') + (years_resi IS NULL)) from users WHERE id='${req.user.id}')+(SELECT IFNULL(SUM((years_experience IS NULL) + (date_current_job ='0000-00-00') +  + (work_position = '') + (type_salary = "") + (type_contract = '') + (total_assets IS NULL) + (monthly_salary IS NULL) + (additional_income IS NULL) + (total_monthly_income IS NULL) +  (monthly_expenditure IS NULL) +   (have_credits IS NULL) +  (amount_credit_acquired IS NULL) +  (bank_entity IS NULL) + (have_savings_account IS NULL) + (bank_entity_accounts IS NULL)),7) from financial_info WHERE id_user='${req.user.id}')) AS value`;
+  const sql = `SELECT((SELECT SUM((date_birth ='0000-00-00') + (depart_birth = '') + (city_birth = '') + (age IS NULL) + (marital_status = '') + (edu_level = '') + (profession = '') + (occupation = '') +(num_per_family_ncl IS NULL)  + (num_per_depen IS NULL)  + (type_housing = '') + (depart_resi = '') + (city_resi = '') + (home_address = '') + (years_resi IS NULL)) from users WHERE id='${req.user.id}')+(SELECT IFNULL(SUM((years_experience IS NULL) + (date_current_job ='0000-00-00') +  + (work_position = '') + (type_salary = "") + (type_contract = '') + (total_assets IS NULL) + (monthly_salary IS NULL) + (additional_income IS NULL) + (total_monthly_income IS NULL) +  (monthly_expenditure IS NULL)),7) from financial_info WHERE id_user='${req.user.id}')) AS value`;
   connection.query(sql, (err, columnsNulls) => {
     if (err) {
       connection.end();
@@ -501,6 +496,70 @@ function getFormProgress(req, res) {
     }
   });
 }
+function saveScoringInfo(req, res) {
+  const have_credits = req.body.havecredits;
+  const amount_credit_acquired = req.body.amountcreditacquired;
+  const days_past_due = req.body.dayspastdue;
+
+  const connection = mysql.createConnection({
+    host: HOST,
+    user: USER,
+    password: PASSWORD,
+    database: DATABASE,
+  });
+  connection.connect((err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  const sql = `UPDATE financial_info SET have_credits="${have_credits}", amount_credit_acquired=${amount_credit_acquired}, days_past_due=${days_past_due} WHERE id_user ="${req.user.id}"`;
+  connection.query(sql, (err) => {
+    if (err) {
+      console.log(err);
+      connection.end();
+      res.status(500).send({
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #9",
+      });
+    } else {
+      connection.end();
+      res.status(200).send();
+    }
+  });
+}
+function getScoringInfo(req, res) {
+  const connection = mysql.createConnection({
+    host: HOST,
+    user: USER,
+    password: PASSWORD,
+    database: DATABASE,
+    typeCast: function castField(field, useDefaultTypeCasting) {
+      if (field.type === "BIT" && field.length === 1) {
+        var bytes = field.buffer();
+        return bytes[0] === 1;
+      }
+      return useDefaultTypeCasting();
+    },
+  });
+  connection.connect((err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  const sql = `SELECT have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, days_past_due AS dayspastdue FROM financial_info WHERE id_user ="${req.user.id}"`;
+  connection.query(sql, (err, userStored) => {
+    if (err) {
+      connection.end();
+      console.log(err);
+      res.status(500).send({
+        message: "Ocurrió un error en el servidor, inténtelo más tarde. #8",
+      });
+    } else {
+      connection.end();
+      res.status(200).send({ scoringData: userStored[0] });
+    }
+  });
+}
+
 function calculatedScoring(req, res) {
   const connection = mysql.createConnection({
     host: HOST,
@@ -533,7 +592,7 @@ function calculatedScoring(req, res) {
         message: "No se encontró el usuario.",
       });
     } else {
-      const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, bank_entity AS bankentity, have_savings_account AS havesavingsaccount,bank_entity_accounts AS bankentityaccounts FROM financial_info WHERE id_user="${req.user.id}"`;
+      const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, days_past_due AS dayspastdue FROM financial_info WHERE id_user="${req.user.id}"`;
       connection.query(sql, (err, financialData) => {
         if (err) {
           connection.end();
@@ -549,7 +608,8 @@ function calculatedScoring(req, res) {
         } else {
           personalData = personalData[0];
           financialData = financialData[0];
-          const scoring = personalData.age * financialData.yearsexperience;
+
+          const scoring = personalData.age * financialData.amountcreditacquired;
 
           const sql = `UPDATE users SET scoring = ${scoring} WHERE id="${req.user.id}"`;
           connection.query(sql, (err) => {
@@ -561,7 +621,9 @@ function calculatedScoring(req, res) {
               });
             } else {
               connection.end();
-              res.status(200).send({ scoring });
+              res.status(200).send({
+                scoring,
+              });
             }
           });
         }
@@ -604,6 +666,8 @@ module.exports = {
   getColumnsNulls,
   saveFormProgress,
   getFormProgress,
+  saveScoringInfo,
+  getScoringInfo,
   calculatedScoring,
   getScoring,
 };

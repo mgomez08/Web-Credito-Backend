@@ -41,6 +41,16 @@ api.get(
   [md_auth.ensureAuth],
   UserController.getFormProgress
 );
+api.post(
+  "/save-scoring-info",
+  [md_auth.ensureAuth],
+  UserController.saveScoringInfo
+);
+api.get(
+  "/get-scoring-info",
+  [md_auth.ensureAuth],
+  UserController.getScoringInfo
+);
 api.get(
   "/calculate-scoring",
   [md_auth.ensureAuth],
