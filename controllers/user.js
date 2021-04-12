@@ -3,6 +3,7 @@ const jwt = require("../services/jwt");
 const mysql = require("mysql");
 const moment = require("moment");
 const { HOST, USER, PASSWORD, DATABASE } = require("../config");
+const { convertCredit, convertAssets } = require("../utils/convertValues");
 
 function signUp(req, res) {
   const userObj = {
@@ -579,7 +580,7 @@ function calculatedScoring(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT name AS names, lastname, date_birth AS datebirth, depart_birth AS departbirth, city_birth AS citybirth,	type_doc AS typedoc, num_doc AS ndoc, tel, age, marital_status AS maritalstatus, edu_level AS educationallevel, profession, occupation, num_per_family_ncl AS numpersonsfamilynucleus, num_per_depen AS numpersonsdependents, type_housing AS typehousing, depart_resi AS departresidence, 	city_resi AS cityresidence, home_address AS homeaddress, years_resi AS yearsresidence FROM users WHERE id="${req.user.id}"`;
+  const sql = `SELECT age FROM users WHERE id="${req.user.id}"`;
   connection.query(sql, (err, personalData) => {
     if (err) {
       connection.end();
@@ -592,7 +593,7 @@ function calculatedScoring(req, res) {
         message: "No se encontró el usuario.",
       });
     } else {
-      const sql = `SELECT years_experience AS yearsexperience, date_current_job AS datecurrentjob, work_position AS workposition, type_salary AS typesalary, type_contract AS typecontract, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, total_monthly_income AS totalmonthlyincome, monthly_expenditure AS  monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, days_past_due AS dayspastdue FROM financial_info WHERE id_user="${req.user.id}"`;
+      const sql = `SELECT years_experience AS yearsexperience, total_assets AS totalassets, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, days_past_due AS dayspastdue FROM financial_info WHERE id_user="${req.user.id}"`;
       connection.query(sql, (err, financialData) => {
         if (err) {
           connection.end();
@@ -609,6 +610,18 @@ function calculatedScoring(req, res) {
           personalData = personalData[0];
           financialData = financialData[0];
 
+          let indebtedness;
+
+          if (financialData.havecredits === "No") {
+            indebtedness = 0;
+          } else if (financialData.havecredits === "Si") {
+            indebtedness =
+              convertCredit(financialData.amountcreditacquired) /
+              convertAssets(financialData.totalassets);
+            indebtedness > 1 ? (indebtedness = 1) : indebtedness;
+          }
+
+          console.log(indebtedness);
           const scoring = personalData.age * financialData.amountcreditacquired;
 
           const sql = `UPDATE users SET scoring = ${scoring} WHERE id="${req.user.id}"`;
