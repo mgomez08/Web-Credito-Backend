@@ -202,7 +202,94 @@ function signIn(req, res) {
     });
   }
 }
-
+function changePassword(req, res) {
+  const currentPassword = req.body.currentPassword;
+  const newPassword = req.body.newPassword;
+  const repeatPassword = req.body.repeatPassword;
+  if (!currentPassword || !newPassword || !repeatPassword) {
+    res.status(404).send({
+      message: "Debe llenar todos los campos.",
+    });
+  } else if (newPassword !== repeatPassword) {
+    res.status(404).send({
+      message: "Las contraseñas nuevas son diferentes.",
+    });
+  } else {
+    const connection = mysql.createConnection({
+      host: HOST,
+      user: USER,
+      password: PASSWORD,
+      database: DATABASE,
+    });
+    connection.connect((err) => {
+      if (err) {
+        throw err;
+      }
+    });
+    const sql = `SELECT password FROM users WHERE id="${req.user.id}"`;
+    connection.query(sql, (err, userStored) => {
+      if (err) {
+        connection.end();
+        res.status(500).send({
+          message: "Ocurrió un error en el servidor, inténtelo más tarde.",
+        });
+      } else {
+        if (!userStored[0]) {
+          connection.end();
+          res.status(404).send({
+            message: "Ocurrió un error, inténtelo más tarde.",
+          });
+        } else {
+          bcrypt.compare(
+            currentPassword,
+            userStored[0].password,
+            (err, check) => {
+              if (err) {
+                connection.end();
+                res.status(500).send({
+                  message:
+                    "Ocurrió un error en el servidor, inténtelo más tarde.",
+                });
+              } else if (!check) {
+                connection.end();
+                res.status(404).send({
+                  message: "La contraseña actual no es correcta.",
+                });
+              } else {
+                bcrypt.hash(newPassword, 10, function (err, hash) {
+                  if (err) {
+                    connection.end();
+                    res.status(500).send({
+                      message: "Ocurrió un error, inténtelo más tarde.",
+                    });
+                  } else {
+                    hash;
+                    const sql = `UPDATE users SET password="${hash}" WHERE id="${req.user.id}"`;
+                    connection.query(sql, (err) => {
+                      if (err) {
+                        connection.end();
+                        res.status(500).send({
+                          message:
+                            "Ocurrió un error en el servidor, inténtelo más tarde.",
+                        });
+                      } else {
+                        connection.end();
+                        res.status(200).send({
+                          ok: true,
+                          message: "Contraseña cambiada correctamente.",
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            }
+          );
+        }
+      }
+    });
+  }
+}
 function savePersonalInfo(req, res) {
   const userObj = {
     name: req.body.names,
@@ -672,6 +759,7 @@ function getScoring(req, res) {
 module.exports = {
   signUp,
   signIn,
+  changePassword,
   savePersonalInfo,
   getPersonalInfo,
   saveFinancialInfo,

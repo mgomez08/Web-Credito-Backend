@@ -7,6 +7,11 @@ const api = express.Router();
 api.post("/sign-up", UserController.signUp);
 api.post("/sign-in", UserController.signIn);
 api.post(
+  "/change-password",
+  [md_auth.ensureAuth],
+  UserController.changePassword
+);
+api.post(
   "/save-personal-info",
   [md_auth.ensureAuth],
   UserController.savePersonalInfo
