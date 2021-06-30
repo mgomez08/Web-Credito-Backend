@@ -79,6 +79,7 @@ function signUp(req, res) {
                   const sql = "INSERT INTO users SET ?";
                   connection.query(sql, userObj, (err) => {
                     if (err) {
+                      console.log(err);
                       connection.end();
                       res.status(500).send({
                         message:
