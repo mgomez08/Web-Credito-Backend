@@ -257,32 +257,44 @@ function changePassword(req, res) {
                   message: "La contraseña actual no es correcta.",
                 });
               } else {
-                bcrypt.hash(newPassword, 10, function (err, hash) {
-                  if (err) {
+                bcrypt.compare(newPassword,
+                  userStored[0].password, 
+                  (err, check) => {
+                  if(err){
                     connection.end();
-                    res.status(500).send({
-                      message: "Ocurrió un error, inténtelo más tarde.",
-                    });
-                  } else {
-                    hash;
-                    const sql = `UPDATE users SET password="${hash}" WHERE id="${req.user.id}"`;
-                    connection.query(sql, (err) => {
+                    res.status(500).send({message: "Ocurrió un error en el servidor, inténtelo más tarde."});
+                  }else if(check){
+                    connection.end();
+                    res.status(404).send({message: "La contraseña nueva es igual a la actual"})
+                  }else{
+                    bcrypt.hash(newPassword, 10, function (err, hash) {
                       if (err) {
                         connection.end();
                         res.status(500).send({
-                          message:
-                            "Ocurrió un error en el servidor, inténtelo más tarde.",
+                          message: "Ocurrió un error, inténtelo más tarde.",
                         });
                       } else {
-                        connection.end();
-                        res.status(200).send({
-                          ok: true,
-                          message: "Contraseña cambiada correctamente.",
+                        hash;
+                        const sql = `UPDATE users SET password="${hash}" WHERE id="${req.user.id}"`;
+                        connection.query(sql, (err) => {
+                          if (err) {
+                            connection.end();
+                            res.status(500).send({
+                              message:
+                                "Ocurrió un error en el servidor, inténtelo más tarde.",
+                            });
+                          } else {
+                            connection.end();
+                            res.status(200).send({
+                              ok: true,
+                              message: "Contraseña cambiada correctamente.",
+                            });
+                          }
                         });
                       }
                     });
                   }
-                });
+                })
               }
             }
           );
