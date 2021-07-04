@@ -748,8 +748,7 @@ function calculatedScoring(req, res) {
           tmpResult = math.multiply(math.multiply(tmpResult, math.transpose(dataModel)),defaults)
           tmpResult = (razoncorrienteUser*tmpResult[0][0])+(endeudamientoUser*tmpResult[1][0]);
           tmpResult = math.exp(tmpResult);
-          const scoring = (tmpResult/(1+tmpResult)).toFixed(2)
-          console.log(scoring);
+          const scoring = ((tmpResult/(1+tmpResult))*100).toFixed(2);
 
           const sql = `UPDATE users SET scoring = ${scoring} WHERE id="${req.user.id}"`;
           connection.query(sql, (err) => {
