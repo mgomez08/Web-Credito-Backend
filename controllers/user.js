@@ -2,8 +2,16 @@ const bcrypt = require("bcryptjs");
 const jwt = require("../services/jwt");
 const mysql = require("mysql");
 const moment = require("moment");
+const math = require("mathjs");
 const { HOST, USER, PASSWORD, DATABASE } = require("../config");
-const { convertCredit, convertAssets } = require("../utils/convertValues");
+const { 
+  convertCredit, 
+  convertAssets, 
+  convertMonthlyIncome,
+  convertExpenditure,
+  convertMonthlySalary,
+  convertAdditionalIncome 
+} = require("../utils/convertValues");
 
 function signUp(req, res) {
   const userObj = {
@@ -680,20 +688,7 @@ function calculatedScoring(req, res) {
       throw err;
     }
   });
-  const sql = `SELECT age FROM users WHERE id="${req.user.id}"`;
-  connection.query(sql, (err, personalData) => {
-    if (err) {
-      connection.end();
-      res.status(500).send({
-        message: "Ocurrió un error en el servidor, inténtelo más tarde. #8",
-      });
-    } else if (!personalData[0]) {
-      connection.end();
-      res.status(404).send({
-        message: "No se encontró el usuario.",
-      });
-    } else {
-      const sql = `SELECT years_experience AS yearsexperience, total_assets AS totalassets, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, days_past_due AS dayspastdue FROM financial_info WHERE id_user="${req.user.id}"`;
+      const sql = `SELECT id_user, total_assets AS totalassets, monthly_salary AS monthlysalary, additional_income AS additionalincome, monthly_expenditure AS monthlyexpenditure, have_credits AS havecredits, amount_credit_acquired AS amountcreditacquired, days_past_due AS dayspastdue FROM financial_info WHERE total_assets> 0 AND monthly_salary IS NOT NULL AND additional_income > 0 AND monthly_expenditure > 0`;
       connection.query(sql, (err, financialData) => {
         if (err) {
           connection.end();
@@ -707,22 +702,54 @@ function calculatedScoring(req, res) {
             message: "No se encontró el usuario.",
           });
         } else {
-          personalData = personalData[0];
-          financialData = financialData[0];
+          let razoncorriente;
+          let endeudamiento;
+          let razoncorrienteUser;
+          let endeudamientoUser;
 
-          let indebtedness;
+          // dataModel - Conjunto de datos de las razones corrientes y endeudamiento de los usuarios
+          const dataModel = [];
+          const defaults = [];
 
-          if (financialData.havecredits === "No") {
-            indebtedness = 0;
-          } else if (financialData.havecredits === "Si") {
-            indebtedness =
-              convertCredit(financialData.amountcreditacquired) /
-              convertAssets(financialData.totalassets);
-            indebtedness > 1 ? (indebtedness = 1) : indebtedness;
-          }
+          financialData.map(userdata => {
+            //razoncorriente = salarioMensual+ingresosAdicionales/egresosMensuales
+            razoncorriente = ((convertMonthlySalary(userdata.monthlysalary)+convertAdditionalIncome(userdata.additionalincome))/convertExpenditure(userdata.monthlyexpenditure));
+            if (userdata.havecredits === "No") {
+              //Si no tiene creditos, el default es 0
+              defaults.push([0]);
+              //endeudamiento en caso que no tenga creditos es egresosMensuales/activosTotales
+              endeudamiento = convertExpenditure(userdata.monthlyexpenditure)/convertAssets(userdata.totalassets); 
+            } else if (userdata.havecredits === "Si") {
+              //Si tiene credito el endeudamiento es montoCredito/activosTotales
+              endeudamiento = convertCredit(userdata.amountcreditacquired)/convertAssets(userdata.totalassets); 
+              if(userdata.dayspastdue > 1){
+                //si es > 1 quiere decir que tiene más de 45 días de mora, por lo que entra en default 1
+                defaults.push([1]);
+              }else{
+                //Si no, el default es 0
+                defaults.push([0]);
+              }
+            }
+            //En caso de que la razon y el endeudamiento de mayor a 1, se dejará como valor el 1
+            razoncorriente > 1 ? razoncorriente = 1 : razoncorriente;
+            endeudamiento > 1 ? endeudamiento = 1 : endeudamiento;
+            //Se agrega la razoncorriente y endeudamiento a la matriz de los datos de los usuarios
+            dataModel.push([razoncorriente, endeudamiento]);
+            //Como se calculará el scoring de una persona, cuando se encuentren sus datos se almacena su razon corriente y endeudamiento para usarlos más adelante
+            if(userdata.id_user === req.user.id){
+              razoncorrienteUser = razoncorriente;
+              endeudamientoUser = endeudamiento;
+            }
+          })
 
-          console.log(indebtedness);
-          const scoring = personalData.age * financialData.amountcreditacquired;
+          //Calcule coefficients - Según el excel
+          let tmpResult = math.multiply(math.transpose(dataModel), dataModel);
+          tmpResult = math.inv(tmpResult);
+          tmpResult = math.multiply(math.multiply(tmpResult, math.transpose(dataModel)),defaults)
+          tmpResult = (razoncorrienteUser*tmpResult[0][0])+(endeudamientoUser*tmpResult[1][0]);
+          tmpResult = math.exp(tmpResult);
+          const scoring = (tmpResult/(1+tmpResult)).toFixed(2)
+          console.log(scoring);
 
           const sql = `UPDATE users SET scoring = ${scoring} WHERE id="${req.user.id}"`;
           connection.query(sql, (err) => {
@@ -741,8 +768,6 @@ function calculatedScoring(req, res) {
           });
         }
       });
-    }
-  });
 }
 function getScoring(req, res) {
   const connection = mysql.createConnection({
