@@ -7,7 +7,6 @@ const { HOST, USER, PASSWORD, DATABASE } = require("../config");
 const { 
   convertCredit, 
   convertAssets, 
-  convertMonthlyIncome,
   convertExpenditure,
   convertMonthlySalary,
   convertAdditionalIncome 
@@ -21,7 +20,7 @@ function signUp(req, res) {
     lastname: req.body.lastname,
     email: req.body.email.toLowerCase(),
     tel: req.body.tel,
-    role: "user",
+    role: 1,
     active: 1,
     password: req.body.password,
   };
