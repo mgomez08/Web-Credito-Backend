@@ -705,7 +705,7 @@ function calculatedScoring(req, res) {
           let endeudamiento;
           let razoncorrienteUser;
           let endeudamientoUser;
-
+          let value = 0;
           // dataModel - Conjunto de datos de las razones corrientes y endeudamiento de los usuarios
           const dataModel = [];
           const defaults = [];
@@ -738,6 +738,9 @@ function calculatedScoring(req, res) {
             if(userdata.id_user === req.user.id){
               razoncorrienteUser = razoncorriente;
               endeudamientoUser = endeudamiento;
+              if(userdata.havecredits === "No"){
+                value = 7;
+              }
             }
           })
 
@@ -747,7 +750,9 @@ function calculatedScoring(req, res) {
           tmpResult = math.multiply(math.multiply(tmpResult, math.transpose(dataModel)),defaults)
           tmpResult = (razoncorrienteUser*tmpResult[0][0])+(endeudamientoUser*tmpResult[1][0]);
           tmpResult = math.exp(tmpResult);
-          const scoring = ((tmpResult/(1+tmpResult))*100).toFixed(2);
+
+          // const scoring = ((tmpResult/(1+tmpResult))*100).toFixed(2);
+          const scoring = (((tmpResult/(1+tmpResult))*100)+value).toFixed(2);
 
           const sql = `UPDATE users SET scoring = ${scoring} WHERE id="${req.user.id}"`;
           connection.query(sql, (err) => {
